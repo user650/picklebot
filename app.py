@@ -1,4 +1,5 @@
 import os
+import json
 
 import requests
 from flask import Flask, request
@@ -6,6 +7,7 @@ from flask import Flask, request
 app = Flask(__name__)
 
 BOT_ID = os.environ.get("GROUPME_BOT_ID")
+ACCESS_TOKEN = os.environ.get("GROUPME_ACCESS_TOKEN")
 
 
 def send_groupme_message(text):
@@ -23,12 +25,50 @@ def send_groupme_message(text):
         timeout=10,
     )
 
-    print("GroupMe response:", response.status_code)
+    print("GroupMe bot-post response:", response.status_code)
+
+
+def get_event_details(group_id, event_id):
+    """Retrieve current GroupMe event information."""
+
+    if not ACCESS_TOKEN:
+        print("ERROR: GROUPME_ACCESS_TOKEN is not configured.")
+        return
+
+    url = (
+        f"https://api.groupme.com/v3/conversations/"
+        f"{group_id}/events/show"
+    )
+
+    try:
+        response = requests.get(
+            url,
+            params={"event_id": event_id},
+            headers={"X-Access-Token": ACCESS_TOKEN},
+            timeout=10,
+        )
+
+        print("EVENT API STATUS:", response.status_code)
+
+        try:
+            data = response.json()
+
+            # Pretty-print the complete response into Heroku logs.
+            print(
+                "EVENT API RESPONSE:",
+                json.dumps(data, indent=2)
+            )
+
+        except ValueError:
+            print("EVENT API NON-JSON RESPONSE:", response.text)
+
+    except requests.RequestException as exc:
+        print("EVENT API REQUEST ERROR:", repr(exc))
 
 
 @app.route("/", methods=["GET"])
 def home():
-    return "PickleBot is running! 🏓", 200
+    return "PickleBot TEST is running! 🏓", 200
 
 
 @app.route("/callback", methods=["POST"])
@@ -37,16 +77,29 @@ def callback():
 
     print("Received from GroupMe:", message)
 
-    text = str(message.get("text") or "").strip().lower()
-    sender_type = message.get("sender_type")
-
-    # Don't respond to bot messages.
-    # Otherwise our bot could respond to its own responses.
-    if sender_type == "bot":
+    # Ignore messages sent by our bot.
+    if message.get("sender_type") == "bot":
         return "OK", 200
 
+    text = str(message.get("text") or "").strip().lower()
+
+    # Preserve our original connectivity test.
     if text == "ping":
         send_groupme_message("Pong! 🏓")
+
+    # Look through the attachments for an Event.
+    for attachment in message.get("attachments", []):
+        if attachment.get("type") == "event":
+
+            event_id = attachment.get("event_id")
+            group_id = message.get("group_id")
+
+            print("EVENT DETECTED")
+            print("GROUP ID:", group_id)
+            print("EVENT ID:", event_id)
+
+            if group_id and event_id:
+                get_event_details(group_id, event_id)
 
     return "OK", 200
 
