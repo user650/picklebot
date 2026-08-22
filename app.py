@@ -28,6 +28,29 @@ def send_groupme_message(text):
     print("GroupMe bot-post response:", response.status_code)
 
 
+def get_rsvp_status(event):
+    """
+    Calculate the current RSVP status from the GroupMe event.
+
+    IMPORTANT:
+    Do not use GroupMe's going_count field.
+    Testing showed that it does not reliably match going[].
+    """
+
+    going = event.get("going") or []
+    maybe = event.get("maybe_going") or []
+    not_going = event.get("not_going") or []
+
+    return {
+        "going": going,
+        "maybe": maybe,
+        "not_going": not_going,
+        "going_count": len(going),
+        "maybe_count": len(maybe),
+        "not_going_count": len(not_going),
+    }
+
+
 def get_event_details(group_id, event_id):
     """Retrieve current GroupMe event information."""
 
@@ -53,11 +76,38 @@ def get_event_details(group_id, event_id):
         try:
             data = response.json()
 
-            # Pretty-print the complete response into Heroku logs.
+            # Pretty-print the complete response.
             print(
                 "EVENT API RESPONSE:",
                 json.dumps(data, indent=2)
             )
+
+            # Extract the actual event object.
+            event = (
+                data.get("response", {})
+                .get("event")
+            )
+
+            if not event:
+                print("ERROR: Event data was not found in API response.")
+                return
+
+            # Calculate RSVP status from the arrays.
+            rsvp = get_rsvp_status(event)
+
+            print("")
+            print("========== PICKLEBOT RSVP STATUS ==========")
+            print("EVENT:", event.get("name"))
+            print("GOING:", rsvp["going"])
+            print("MAYBE:", rsvp["maybe"])
+            print("NOT GOING:", rsvp["not_going"])
+            print("CONFIRMED PLAYER COUNT:", rsvp["going_count"])
+            print("MAYBE PLAYER COUNT:", rsvp["maybe_count"])
+            print("NOT GOING COUNT:", rsvp["not_going_count"])
+            print("===========================================")
+            print("")
+
+            return event
 
         except ValueError:
             print("EVENT API NON-JSON RESPONSE:", response.text)
