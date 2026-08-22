@@ -50,6 +50,26 @@ def get_rsvp_status(event):
         "not_going_count": len(not_going),
     }
 
+def get_pickleball_status(confirmed_count):
+    # Temporary test target.
+    # Later we can make this configurable per session.
+    TARGET_PLAYERS = 4
+
+    if confirmed_count < TARGET_PLAYERS:
+        players_needed = TARGET_PLAYERS - confirmed_count
+        status_message = f"{players_needed} more player(s) needed."
+
+    elif confirmed_count == TARGET_PLAYERS:
+        status_message = f"We have {confirmed_count} players. Game on! 🏓"
+
+    else:
+        extra_players = confirmed_count - TARGET_PLAYERS
+        status_message = (
+            f"We have {confirmed_count} players — "
+            f"{extra_players} over the target."
+        )
+
+    return status_message
 
 def get_event_details(group_id, event_id):
     """Retrieve current GroupMe event information."""
