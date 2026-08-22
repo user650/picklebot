@@ -124,6 +124,10 @@ def get_event_details(group_id, event_id):
             print("CONFIRMED PLAYER COUNT:", rsvp["going_count"])
             print("MAYBE PLAYER COUNT:", rsvp["maybe_count"])
             print("NOT GOING COUNT:", rsvp["not_going_count"])
+            pickleball_status = get_pickleball_status(
+                rsvp["going_count"]
+                )
+            print("PICKLEBOT STATUS:", pickleball_status)
             print("===========================================")
             print("")
 
